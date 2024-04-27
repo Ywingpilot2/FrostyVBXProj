@@ -110,7 +110,19 @@ namespace VBXProj
             FrostyTaskWindow.Show("Saving...", "", task =>
             {
                 task.Update("Cleaning directory...");
-                foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*", SearchOption.AllDirectories))
+                foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.vbx", SearchOption.AllDirectories))
+                {
+                    File.Delete(file);
+                }
+                foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.bdl", SearchOption.AllDirectories))
+                {
+                    File.Delete(file);
+                }
+                foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.res", SearchOption.AllDirectories))
+                {
+                    File.Delete(file);
+                }
+                foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.chunk", SearchOption.AllDirectories))
                 {
                     File.Delete(file);
                 }
