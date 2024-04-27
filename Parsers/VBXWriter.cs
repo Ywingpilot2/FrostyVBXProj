@@ -129,6 +129,18 @@ namespace VBXProj.Parsers
             PreviousLevel();
             WriteIndentedLine("}");
             WriteIndentedLine("");
+            
+            WriteIndentedLine("Dependencies");
+            WriteIndentedLine("{");
+            NextLevel();
+            
+            foreach (Guid dependency in asset.Dependencies)
+            {
+                WriteIndentedLine(dependency.ToString());
+            }
+            
+            PreviousLevel();
+            WriteIndentedLine("}");
 
             PreviousLevel();
             WriteIndentedLine("}");

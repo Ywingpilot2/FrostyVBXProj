@@ -108,15 +108,20 @@ namespace VBXProj.Parsers
                             Ebx.AddObject(assetObject);
                         }
 
+                        foreach (Guid dependency in fileData.Dependencies)
+                        {
+                            Ebx.AddDependency(dependency);
+                        }
+
                         if (App.AssetManager.GetEbxEntry(fileData.FileId) != null && (overwrite || !App.AssetManager.GetEbxEntry(fileData.FileId).IsModified))
                         {
-                            AssetEntry = App.AssetManager.GetEbxEntry(fileData.AssetPath);
-                            AssetEntry.ModifiedEntry = new ModifiedAssetEntry() { DataObject = Ebx, IsTransientModified = fileData.TransientEdit};
+                            AssetEntry = App.AssetManager.GetEbxEntry(fileData.FileId);
+                            AssetEntry.ModifiedEntry = new ModifiedAssetEntry { DataObject = Ebx, IsTransientModified = fileData.TransientEdit};
                         }
                         else if (App.AssetManager.GetEbxEntry(fileData.FileId) == null)
                         {
                             AssetEntry = App.AssetManager.AddEbx(fileData.AssetPath, Ebx);
-                            AssetEntry.ModifiedEntry = new ModifiedAssetEntry() { DataObject = Ebx, IsTransientModified = fileData.TransientEdit };
+                            AssetEntry.ModifiedEntry = new ModifiedAssetEntry { DataObject = Ebx, IsTransientModified = fileData.TransientEdit };
                         }
                         else
                         {
@@ -133,11 +138,7 @@ namespace VBXProj.Parsers
                     default:
                     {
                         // TODO: Work around to us writing root objects twice
-                        object obj = ReadClass(line);
-                        if (!Ebx.Objects.Contains(obj))
-                        {
-                            Ebx.AddObject(obj);
-                        }
+                        ReadClass(line);
                         line = ReadCleanLine();
                     } break;
                 }
@@ -178,7 +179,8 @@ namespace VBXProj.Parsers
             VFileData fileData = new VFileData
             {
                 Objects = new Dictionary<AssetClassGuid, object>(),
-                Bundles = new List<int>()
+                Bundles = new List<int>(),
+                Dependencies = new List<Guid>()
             };
 
             string line = ReadCleanLine();
@@ -257,6 +259,20 @@ namespace VBXProj.Parsers
                         {
                             int bid = App.AssetManager.GetBundleId(line);
                             fileData.Bundles.Add(bid);
+                            line = ReadCleanLine();
+                        }
+                    } break;
+                    case "Dependencies":
+                    {
+                        while (line != "{")
+                        {
+                            line = ReadCleanLine();
+                        }
+                        line = ReadCleanLine();
+
+                        while (line != "}")
+                        {
+                            fileData.Dependencies.Add(Guid.Parse(line));
                             line = ReadCleanLine();
                         }
                     } break;
@@ -872,6 +888,7 @@ namespace VBXProj.Parsers
         public string Type { get; set; }
         public Dictionary<AssetClassGuid, object> Objects { get; set; }
         public List<int> Bundles { get; set; }
+        public List<Guid> Dependencies { get; set; }
         public bool HasModifiedResource { get; set; }
         public bool TransientEdit { get; set; }
     }
