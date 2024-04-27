@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using Frosty.Controls;
 using Frosty.Core;
@@ -114,6 +115,9 @@ namespace VBXProj
                     File.Delete(file);
                 }
                 
+                task.Update("Writing Bundles...");
+                WriteBundles(fi.Directory.FullName);
+                
                 task.Update("Writing project...");
                 WriteProject(path);
 
@@ -140,12 +144,25 @@ namespace VBXProj
             });
         }
 
+        #region Writing
+
+        private static void WriteBundles(string directory)
+        {
+            foreach (BundleEntry bundle in App.AssetManager.EnumerateBundles(modifiedOnly:true))
+            {
+                BundleWriter writer = new BundleWriter($@"{directory}\Bundles\{bundle.Name.Replace("/", "\\")}.bdl");
+                writer.WriteBundle(bundle);
+                writer.Dispose();
+            }
+        }
+
         private static void WriteVbx(string directory)
         {
             VBXWriter writer = new VBXWriter();
             foreach (EbxAssetEntry assetEntry in App.AssetManager.EnumerateEbx("", true))
             {
-                writer.WriteAsset(assetEntry, $@"{directory}\Vbx\{assetEntry.Name.Replace("/", "\\")}.vbx", directory);
+                string path = $@"{directory}\Vbx\{assetEntry.Name.Replace("/", "\\")}.vbx";
+                writer.WriteAsset(assetEntry, RemoveIllegalCharacters(path), directory);
                 if (assetEntry.HasModifiedData)
                 {
                     assetEntry.ModifiedEntry.IsDirty = false;
@@ -162,13 +179,13 @@ namespace VBXProj
             foreach (ResAssetEntry entry in App.AssetManager.EnumerateRes(modifiedOnly:true))
             {
                 string path = $@"{directory}\Res\{entry.Name.Replace("/", "\\")}.res";
-                FileInfo fi = new FileInfo(path);
+                FileInfo fi = new FileInfo(RemoveIllegalCharacters(path));
                 if (fi.Directory != null && !fi.Directory.Exists) 
                 { 
                     Directory.CreateDirectory(fi.DirectoryName); 
                 }
 
-                NativeWriter writer = new NativeWriter(new FileStream(path, FileMode.Create));
+                NativeWriter writer = new NativeWriter(new FileStream(fi.FullName, FileMode.Create));
                 writer.Write(entry.IsAdded);
                 writer.WriteNullTerminatedString(entry.Name);
                 writer.Write(entry.ResRid);
@@ -221,13 +238,13 @@ namespace VBXProj
             foreach (ChunkAssetEntry entry in App.AssetManager.EnumerateChunks(true))
             {
                 string path = $@"{directory}\Chunks\{entry.Name}.chunk";
-                FileInfo fi = new FileInfo(path);
+                FileInfo fi = new FileInfo(RemoveIllegalCharacters(path));
                 if (fi.Directory != null && !fi.Directory.Exists) 
                 { 
                     Directory.CreateDirectory(fi.DirectoryName); 
                 }
 
-                NativeWriter writer = new NativeWriter(new FileStream(path, FileMode.Create));
+                NativeWriter writer = new NativeWriter(new FileStream(fi.FullName, FileMode.Create));
                 writer.Write(entry.IsAdded);
                 writer.Write(entry.Id);
                 writer.Write(entry.HasModifiedData ? entry.ModifiedEntry.H32 : entry.H32);
@@ -235,7 +252,7 @@ namespace VBXProj
                 writer.Write(entry.AddedBundles.Count);
                 foreach (int bid in entry.AddedBundles)
                 {
-                     writer.WriteNullTerminatedString(App.AssetManager.GetBundleEntry(bid).Name);
+                    writer.WriteNullTerminatedString(App.AssetManager.GetBundleEntry(bid).Name);
                 }
                 
                 writer.Write(entry.HasModifiedData ? entry.ModifiedEntry.FirstMip : entry.FirstMip);
@@ -274,6 +291,36 @@ namespace VBXProj
             }
         }
 
+        // I don't actually know what characters are illegal, so most of these are probs fine
+        private static char[] _illegalChars = new[]
+        {
+            '!',
+            '?',
+            '/',
+            '*',
+            '$',
+            '"',
+            '\'',
+            '[',
+            ']',
+            '@'
+        };
+        private static string RemoveIllegalCharacters(string str)
+        {
+            if (str.Any(c => _illegalChars.Contains(c)))
+            {
+                foreach (char illegalChar in _illegalChars)
+                {
+                    
+                    str = str.Replace($"{illegalChar}", "");
+                }
+            }
+
+            return str;
+        }
+
+        #endregion
+
         #endregion
 
         #region Load
@@ -292,6 +339,9 @@ namespace VBXProj
                 task.Update("Reading project...");
                 LoadProject(path);
                 
+                task.Update("Reading Bundles...");
+                ReadBundle(fi.Directory.FullName);
+                
                 task.Update("Reading VBX...");
                 ReadVbx(fi.Directory.FullName);
                 
@@ -300,18 +350,37 @@ namespace VBXProj
                 
                 task.Update("Reading chunks...");
                 ReadChunk(fi.Directory.FullName);
+                
+                task.Update("Cleanup...");
+                foreach (BundleEntry bundle in App.AssetManager.EnumerateBundles(modifiedOnly:true))
+                {
+                    if (bundle.Type == BundleType.SharedBundle)
+                        continue;
+                    
+                    bundle.Blueprint = App.AssetManager.GetEbxEntry(bundle.Name.Remove(0, 6));
+                }
             });
+        }
+
+        private static void ReadBundle(string projectDir)
+        {
+            foreach (string file in Directory.EnumerateFiles(projectDir, "*.bdl", SearchOption.AllDirectories))
+            {
+                BundleReader reader = new BundleReader(file);
+                reader.ReadBundle();
+                reader.Dispose();
+            }
         }
 
         private static void ReadVbx(string projectDir)
         {
-            VBXReader reader = new VBXReader();
+            VbxDataReader dataReader = new VbxDataReader();
             foreach (string file in Directory.EnumerateFiles(projectDir, "*.vbx", SearchOption.AllDirectories))
             {
-                reader.ReadAsset(file);
+                dataReader.ReadAsset(file);
             }
             
-            reader.Dispose();
+            dataReader.Dispose();
         }
 
         private static void ReadChunk(string projectDir)

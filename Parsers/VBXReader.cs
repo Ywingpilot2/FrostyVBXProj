@@ -10,10 +10,11 @@ using FrostySdk;
 using FrostySdk.Ebx;
 using FrostySdk.IO;
 using FrostySdk.Managers;
+using FrostySdk.Resources;
 
 namespace VBXProj.Parsers
 {
-    public class VBXReader : BaseReader
+    public class VbxDataReader : BaseDataReader
     {
         public EbxAssetEntry AssetEntry;
         public EbxAsset Ebx;
@@ -21,7 +22,7 @@ namespace VBXProj.Parsers
         private Dictionary<AssetClassGuid, object> _objects = new Dictionary<AssetClassGuid, object>();
         private FileInfo _file;
 
-        public VBXReader(string filepath)
+        public VbxDataReader(string filepath)
         {
             FileInfo fi = new FileInfo(filepath);
             if (fi.Directory != null && !fi.Directory.Exists) 
@@ -33,7 +34,7 @@ namespace VBXProj.Parsers
             _reader = new StreamReader(filepath);
         }
 
-        public VBXReader()
+        public VbxDataReader()
         {
         }
 
@@ -73,22 +74,49 @@ namespace VBXProj.Parsers
                     case "FILEDATA":
                     {
                         VFileData fileData = ReadFileData();
-                        AssetClassGuid rootGuid = _objects.Keys.First();
-                        line = ReadCleanLine();
                         
-                        Ebx = new EbxAsset(_rootObjects.ToArray());
-                        ((dynamic)Ebx.RootObject).SetInstanceGuid(rootGuid);
+                        // This asset is a handler, therefore needs none of this extra work
+                        if (fileData.HasModifiedResource)
+                        {
+                            AssetEntry = App.AssetManager.GetEbxEntry(fileData.AssetPath);
+                            if (AssetEntry == null) // TODO: Does this even work?
+                            {
+                                AssetEntry = new EbxAssetEntry
+                                {
+                                    Name = fileData.AssetPath,
+                                    AddedBundles = fileData.Bundles,
+                                };
+                                App.AssetManager.AddEbx(AssetEntry);
+                            }
+                            string path = _file.FullName.Replace(".vbx", ".md");
+                            NativeReader reader = new NativeReader(new FileStream(path, FileMode.Open));
+                            int length = reader.ReadInt();
+                            ModifiedResource resource = ModifiedResource.Read(reader.ReadBytes(length));
+                            AssetEntry.ModifiedEntry = new ModifiedAssetEntry { DataObject = resource };
+                            Dispose();
+                            return AssetEntry;
+                        }
+                        
+                        line = ReadCleanLine();
+
+                        // Stupid work around to forcefully initialized the ebx asset
+                        // Why the default constructor even exists when you can't fucking use it I do not know
+                        Ebx = new EbxAsset(new object[]{});
                         Ebx.SetFileGuid(fileData.FileId);
+                        foreach (object assetObject in _objects.Values)
+                        {
+                            Ebx.AddObject(assetObject);
+                        }
 
                         if (App.AssetManager.GetEbxEntry(fileData.FileId) != null && (overwrite || !App.AssetManager.GetEbxEntry(fileData.FileId).IsModified))
                         {
                             AssetEntry = App.AssetManager.GetEbxEntry(fileData.AssetPath);
-                            App.AssetManager.ModifyEbx(AssetEntry.Name, Ebx);
+                            AssetEntry.ModifiedEntry = new ModifiedAssetEntry() { DataObject = Ebx, IsTransientModified = fileData.TransientEdit};
                         }
                         else if (App.AssetManager.GetEbxEntry(fileData.FileId) == null)
                         {
                             AssetEntry = App.AssetManager.AddEbx(fileData.AssetPath, Ebx);
-                            App.AssetManager.ModifyEbx(AssetEntry.Name, Ebx);
+                            AssetEntry.ModifiedEntry = new ModifiedAssetEntry() { DataObject = Ebx, IsTransientModified = fileData.TransientEdit };
                         }
                         else
                         {
@@ -96,9 +124,11 @@ namespace VBXProj.Parsers
                             {
                                 Name = fileData.AssetPath, Type = fileData.Type,
                                 // TODO: This makes modified data invalid. But since we are not adding it to the asset manager, why bother?
-                                ModifiedEntry = new ModifiedAssetEntry { DataObject = Ebx }
+                                ModifiedEntry = new ModifiedAssetEntry { DataObject = Ebx, IsTransientModified = fileData.TransientEdit }
                             };
                         }
+
+                        AssetEntry.AddToBundles(fileData.Bundles);
                     } break;
                     default:
                     {
@@ -115,8 +145,10 @@ namespace VBXProj.Parsers
 
             // Hoping this will fix some dependency issues
             AssetEntry.ModifiedEntry.DependentAssets.AddRange(Ebx.Dependencies);
+            Ebx.OnLoadComplete();
+            AssetEntry.OnModified();
             AssetEntry.IsDirty = false;
-            
+
             Dispose();
 
             return AssetEntry;
@@ -143,9 +175,11 @@ namespace VBXProj.Parsers
 
         private VFileData ReadFileData()
         {
-            string projectDir = "";
-            string type = "";
-            Guid fid = Guid.Empty;
+            VFileData fileData = new VFileData
+            {
+                Objects = new Dictionary<AssetClassGuid, object>(),
+                Bundles = new List<int>()
+            };
 
             string line = ReadCleanLine();
             while (line != "{")
@@ -165,17 +199,25 @@ namespace VBXProj.Parsers
                 var props = line.Split(new[] { "\" \"" }, StringSplitOptions.RemoveEmptyEntries);
                 switch (props[0].Trim('"'))
                 {
+                    case "transient":
+                    {
+                        fileData.TransientEdit = true;
+                    } break;
+                    case "modified_resource":
+                    {
+                        fileData.HasModifiedResource = true;
+                    } break;
                     case "projdir":
                     {
-                        projectDir = props[1].Trim('"');
+                        fileData.ProjectDir = props[1].Trim('"');
                     } break;
                     case "fid":
                     {
-                        fid = Guid.Parse(props[1].Trim('"'));
+                        fileData.FileId = Guid.Parse(props[1].Trim('"'));
                     } break;
                     case "type":
                     {
-                        type = props[1].Trim('"');
+                        fileData.Type = props[1].Trim('"');
                     } break;
                     case "Objects":
                     {
@@ -195,23 +237,22 @@ namespace VBXProj.Parsers
                             // TODO: Make everything else rely on AssetClassGuid instead of guid
                             ((dynamic)obj).SetInstanceGuid(classGuid);
                             _objects.Add(classGuid, obj);
+                            fileData.Objects.Add(classGuid, obj);
+                            line = ReadCleanLine();
+                        }
+                    } break;
+                    case "Bundles":
+                    {
+                        while (line != "{")
+                        {
+                            line = ReadCleanLine();
+                        }
+                        line = ReadCleanLine();
 
-                            // TODO: REMOVE ME ON RELEASE! This is to fix versions prior to 1001 not having root object support
-                            if (objStr.Length == 4)
-                            {
-                                if (bool.Parse(objStr[3].Trim('"')))
-                                {
-                                    _rootObjects.Add(obj);
-                                }
-                            }
-                            else
-                            {
-                                // Only add 1 root object
-                                if (_rootObjects.Count == 0)
-                                {
-                                    _rootObjects.Add(obj);
-                                }
-                            }
+                        while (line != "}")
+                        {
+                            int bid = App.AssetManager.GetBundleId(line);
+                            fileData.Bundles.Add(bid);
                             line = ReadCleanLine();
                         }
                     } break;
@@ -219,8 +260,9 @@ namespace VBXProj.Parsers
                 line = ReadCleanLine();
             }
 
-            string fileDir = _file.FullName.Replace($"{projectDir}\\Vbx\\", "").Replace("\\", "/");
-            return new VFileData(fileDir.Replace(".vbx", "").Trim(), projectDir, _file.FullName, fid, type, _objects);
+            fileData.AssetPath = _file.FullName.Replace($"{fileData.ProjectDir}\\Vbx\\", "").Replace("\\", "/").Replace(".vbx", "");
+            fileData.PhysicalPath = _file.FullName;
+            return fileData;
         }
 
         private object ReadClass(string header)
@@ -272,7 +314,7 @@ namespace VBXProj.Parsers
                 return null;
             }
             
-            dynamic propObj;
+            object propObj;
             
             switch (type)
             {
@@ -311,27 +353,27 @@ namespace VBXProj.Parsers
                 {
                     dynamic vec = TypeLibrary.CreateObject(type);
                     var trans = value.Split(',');
-                    vec.x = float.Parse(trans[0]);
-                    vec.y = float.Parse(trans[1]);
+                    vec.x = float.Parse(trans[0], NumberStyles.Float);
+                    vec.y = float.Parse(trans[1], NumberStyles.Float);
                     propObj = vec;
                 } break;
                 case "Vec3":
                 {
                     dynamic vec = TypeLibrary.CreateObject(type);
                     var trans = value.Split(',');
-                    vec.x = float.Parse(trans[0]);
-                    vec.y = float.Parse(trans[1]);
-                    vec.z = float.Parse(trans[2]);
+                    vec.x = float.Parse(trans[0], NumberStyles.Float);
+                    vec.y = float.Parse(trans[1], NumberStyles.Float);
+                    vec.z = float.Parse(trans[2], NumberStyles.Float);
                     propObj = vec;
                 } break;
                 case "Vec4":
                 {
                     dynamic vec = TypeLibrary.CreateObject(type);
                     var trans = value.Split(',');
-                    vec.x = float.Parse(trans[0]);
-                    vec.y = float.Parse(trans[1]);
-                    vec.z = float.Parse(trans[2]);
-                    vec.w = float.Parse(trans[3]);
+                    vec.x = float.Parse(trans[0], NumberStyles.Float);
+                    vec.y = float.Parse(trans[1], NumberStyles.Float);
+                    vec.z = float.Parse(trans[2], NumberStyles.Float);
+                    vec.w = float.Parse(trans[3], NumberStyles.Float);
                     propObj = vec;
                 } break;
 
@@ -342,15 +384,15 @@ namespace VBXProj.Parsers
 
                 case "Single":
                 {
-                    propObj = Single.Parse(value);
+                    propObj = Single.Parse(value, NumberStyles.Float);
                 } break;
                 case "Float":
                 {
-                    propObj = float.Parse(value);
+                    propObj = float.Parse(value, NumberStyles.Float);
                 } break;
                 case "Double":
                 {
-                    propObj = double.Parse(value);
+                    propObj = double.Parse(value, NumberStyles.Float);
                 } break;
 
                 #endregion
@@ -414,7 +456,7 @@ namespace VBXProj.Parsers
                 } break;
                 
                 
-                case "LinearTransform":
+                /*case "LinearTransform":
                 {
                     propObj = TypeLibrary.CreateObject(type);
                     string line = ReadCleanLine();
@@ -424,40 +466,15 @@ namespace VBXProj.Parsers
                     }
 
                     line = ReadCleanLine();
-
-                    EditorLinearTransform transform = new EditorLinearTransform();
-                    while (line != "}")
-                    {
-                        if (string.IsNullOrEmpty(line))
-                        {
-                            line = ReadCleanLine();
-                            continue;
-                        }
-                
-                        var propdet = line.Split(new[] { "\" \"" }, StringSplitOptions.RemoveEmptyEntries);
-
-                        switch (propdet[1])
-                        {
-                            case "Translate":
-                            {
-                                transform.Translation = ReadProperty("Vec3", propdet[2].Trim('"'));
-                            } break;
-                            case "Scale":
-                            {
-                                transform.Scale = ReadProperty("Vec3", propdet[2].Trim('"'));
-                            } break;
-                            case "Rotation":
-                            {
-                                transform.Rotation = ReadProperty("Vec3", propdet[2].Trim('"'));
-                            } break;
-                        }
-
-                        line = ReadCleanLine();
-                    }
-
-                    LinearTransformConverter converter = new LinearTransformConverter();
-                    propObj = converter.ConvertBack(transform, propObj.GetType(), propObj, CultureInfo.CurrentCulture);
-                } break;
+                    ReadProperty(propObj, "Vec3", "right", line.Split(new[] { "\" \"" }, StringSplitOptions.RemoveEmptyEntries)[2].Trim('"'));
+                    line = ReadCleanLine();
+                    ReadProperty(propObj, "Vec3", "up", line.Split(new[] { "\" \"" }, StringSplitOptions.RemoveEmptyEntries)[2].Trim('"'));
+                    line = ReadCleanLine();
+                    ReadProperty(propObj, "Vec3", "forward", line.Split(new[] { "\" \"" }, StringSplitOptions.RemoveEmptyEntries)[2].Trim('"'));
+                    line = ReadCleanLine();
+                    ReadProperty(propObj, "Vec3", "trans", line.Split(new[] { "\" \"" }, StringSplitOptions.RemoveEmptyEntries)[2].Trim('"'));
+                    line = ReadCleanLine();
+                } break;*/
 
                 #endregion
 
@@ -498,7 +515,6 @@ namespace VBXProj.Parsers
 
                 default:
                 {
-                    
                     if (propInfo.PropertyType.IsEnum)
                     {
                         propObj = Enum.Parse(propInfo.PropertyType, value);
@@ -523,7 +539,7 @@ namespace VBXProj.Parsers
                 
                         // Enumerate over properties
                         var propDet = line.Split(new[] { "\" \"" }, StringSplitOptions.RemoveEmptyEntries);
-                        dynamic property;
+                        object property;
                         if (propDet.Length == 3)
                         {
                             property = ReadProperty(propObj, propDet[0].Trim('"'), propDet[1].Trim('"'), propDet[2].Trim('"'));
@@ -547,7 +563,7 @@ namespace VBXProj.Parsers
         
         private dynamic ReadProperty(string type, string value)
         {
-            dynamic propObj;
+            object propObj;
             
             switch (type)
             {
@@ -689,7 +705,7 @@ namespace VBXProj.Parsers
                 } break;
                 
                 
-                case "LinearTransform":
+                /*case "LinearTransform":
                 {
                     propObj = TypeLibrary.CreateObject(type);
                     string line = ReadCleanLine();
@@ -732,7 +748,7 @@ namespace VBXProj.Parsers
 
                     LinearTransformConverter converter = new LinearTransformConverter();
                     propObj = converter.ConvertBack(transform, propObj.GetType(), propObj, CultureInfo.CurrentCulture);
-                } break;
+                } break;*/
 
                 #endregion
 
@@ -763,7 +779,7 @@ namespace VBXProj.Parsers
                 
                         // Enumerate over properties
                         var propDet = line.Split(new[] { "\" \"" }, StringSplitOptions.RemoveEmptyEntries);
-                        dynamic property;
+                        object property;
                         if (propDet.Length == 3)
                         {
                             property = ReadProperty(propObj, propDet[0].Trim('"'), propDet[1].Trim('"'), propDet[2].Trim('"'));
@@ -795,7 +811,15 @@ namespace VBXProj.Parsers
         {
             Type objType = objToSet.GetType();
             PropertyInfo propInfo = objType.GetProperty(name);
-            propInfo?.SetValue(objToSet, value);
+            try
+            {
+                propInfo?.SetValue(objToSet, value);
+            }
+            catch (Exception e)
+            {
+                App.Logger.LogError("Encountered an error setting property {0} to {1}", propInfo != null ? propInfo.Name : "null", value ?? "null");
+                return;
+            }
         }
 
         /// <summary>
@@ -806,7 +830,15 @@ namespace VBXProj.Parsers
         /// <param name="propInfo">The Property Info of the property to set</param>
         private void SetValue(object objToSet, object value, PropertyInfo propInfo)
         {
-            propInfo.SetValue(objToSet, value);
+            try
+            {
+                propInfo.SetValue(objToSet, value);
+            }
+            catch (Exception e)
+            {
+                App.Logger.LogError("Encountered an error setting property {0} to {1}", propInfo.Name, value ?? "null");
+                return;
+            }
         }
 
         #endregion
@@ -825,21 +857,14 @@ namespace VBXProj.Parsers
 
     public struct VFileData
     {
-        public string AssetPath { get; }
-        public string ProjectDir { get; }
-        public string PhysicalPath { get; }
-        public Guid FileId { get; }
-        public string Type { get; }
-        public Dictionary<AssetClassGuid, object> Objects { get; }
-
-        public VFileData(string assetPath, string projectDir, string path, Guid fid, string type, Dictionary<AssetClassGuid, object> objects)
-        {
-            AssetPath = assetPath;
-            ProjectDir = projectDir;
-            FileId = fid;
-            Type = type;
-            Objects = objects;
-            PhysicalPath = path;
-        }
+        public string AssetPath { get; set; }
+        public string ProjectDir { get; set; }
+        public string PhysicalPath { get; set; }
+        public Guid FileId { get; set; }
+        public string Type { get; set; }
+        public Dictionary<AssetClassGuid, object> Objects { get; set; }
+        public List<int> Bundles { get; set; }
+        public bool HasModifiedResource { get; set; }
+        public bool TransientEdit { get; set; }
     }
 }

@@ -27,3 +27,6 @@ using VBXProj.Extensions;
 [assembly: PluginVersion("1.0.0.0")]
 [assembly: RegisterMenuExtension(typeof(VBXProjLoad))]
 [assembly: RegisterMenuExtension(typeof(VBXProjSave))]
+#if DEVELOPER___DEBUG
+[assembly: RegisterMenuExtension(typeof(XmlDiffExtension))]
+#endif

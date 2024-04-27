@@ -2,7 +2,7 @@
 
 namespace VBXProj.Parsers
 {
-    public abstract class BaseReader
+    public abstract class BaseDataReader
     {
         private protected StreamReader _reader;
         
@@ -30,6 +30,7 @@ namespace VBXProj.Parsers
         public virtual void Dispose()
         {
             _reader.Close();
+            _reader.Dispose();
         }
     }
 }

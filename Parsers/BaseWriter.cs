@@ -64,6 +64,7 @@ namespace VBXProj.Parsers
         public void Dispose()
         {
             _writer.Close();
+            _writer.Dispose();
         }
     }
 }

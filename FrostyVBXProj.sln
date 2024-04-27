@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VBXProj", "VBXProj.csproj", "{B5AEC849-F457-4AC1-9417-681C7077B8D7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VBXProj", "VBXProj.csproj", "{4811121D-959A-4B93-A997-CFFEE2E34ED6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -10,13 +10,13 @@ Global
 		Release - Beta|x64 = Release - Beta|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B5AEC849-F457-4AC1-9417-681C7077B8D7}.Developer - Debug|x64.ActiveCfg = Developer - Debug|x64
-		{B5AEC849-F457-4AC1-9417-681C7077B8D7}.Developer - Debug|x64.Build.0 = Developer - Debug|x64
-		{B5AEC849-F457-4AC1-9417-681C7077B8D7}.Release - Final|x64.ActiveCfg = Release - Final|x64
-		{B5AEC849-F457-4AC1-9417-681C7077B8D7}.Release - Final|x64.Build.0 = Release - Final|x64
-		{B5AEC849-F457-4AC1-9417-681C7077B8D7}.Release - Alpha|x64.ActiveCfg = Release - Alpha|x64
-		{B5AEC849-F457-4AC1-9417-681C7077B8D7}.Release - Alpha|x64.Build.0 = Release - Alpha|x64
-		{B5AEC849-F457-4AC1-9417-681C7077B8D7}.Release - Beta|x64.ActiveCfg = Release - Beta|x64
-		{B5AEC849-F457-4AC1-9417-681C7077B8D7}.Release - Beta|x64.Build.0 = Release - Beta|x64
+		{4811121D-959A-4B93-A997-CFFEE2E34ED6}.Developer - Debug|x64.ActiveCfg = Developer - Debug|x64
+		{4811121D-959A-4B93-A997-CFFEE2E34ED6}.Developer - Debug|x64.Build.0 = Developer - Debug|x64
+		{4811121D-959A-4B93-A997-CFFEE2E34ED6}.Release - Final|x64.ActiveCfg = Release - Final|x64
+		{4811121D-959A-4B93-A997-CFFEE2E34ED6}.Release - Final|x64.Build.0 = Release - Final|x64
+		{4811121D-959A-4B93-A997-CFFEE2E34ED6}.Release - Alpha|x64.ActiveCfg = Release - Alpha|x64
+		{4811121D-959A-4B93-A997-CFFEE2E34ED6}.Release - Alpha|x64.Build.0 = Release - Alpha|x64
+		{4811121D-959A-4B93-A997-CFFEE2E34ED6}.Release - Beta|x64.ActiveCfg = Release - Beta|x64
+		{4811121D-959A-4B93-A997-CFFEE2E34ED6}.Release - Beta|x64.Build.0 = Release - Beta|x64
 	EndGlobalSection
 EndGlobal

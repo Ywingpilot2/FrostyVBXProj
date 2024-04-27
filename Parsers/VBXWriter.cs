@@ -1,12 +1,15 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using Frosty.Core;
 using Frosty.Core.Controls.Editors;
+using FrostySdk.Attributes;
 using FrostySdk.Ebx;
 using FrostySdk.IO;
 using FrostySdk.Managers;
+using FrostySdk.Resources;
 
 namespace VBXProj.Parsers
 {
@@ -60,10 +63,36 @@ namespace VBXProj.Parsers
             WriteIndentedLine("{");
             NextLevel();
 
+            // This asset is a handler, meaning we need to store it in binary
+            if (assetEntry.ModifiedEntry.DataObject is ModifiedResource modifiedResource)
+            {
+                string path = $@"{projectDir}\Vbx\{assetEntry.Name.Replace('/', '\\')}.md";
+                WriteIndentedLine("modified_resource");
+                WriteIndentedLine($"\"projdir\" \"{projectDir}\"");
+                WriteIndentedLine($"\"type\" \"{assetEntry.Type}\"");
+                WriteIndentedLine($"\"fid\" \"{asset.FileGuid}\"");
+                PreviousLevel();
+                WriteIndentedLine("}");
+
+                NativeWriter writer = new NativeWriter(new FileStream(path, FileMode.Create));
+                byte[] buf = modifiedResource.Save();
+                writer.Write(buf.Length);
+                writer.Write(buf);
+                writer.Dispose();
+                _writer.Close();
+                return;
+            }
+
             // Write file data
             WriteIndentedLine($"\"projdir\" \"{projectDir}\"");
             WriteIndentedLine($"\"type\" \"{assetEntry.Type}\"");
             WriteIndentedLine($"\"fid\" \"{asset.FileGuid}\"");
+            // I hope I get to meet gman some day so I can punch him in the fucking face for this
+            // Transient edits are so bafflingly stupid
+            if (assetEntry.ModifiedEntry.IsTransientModified)
+            {
+                WriteIndentedLine("transient"); 
+            }
             WriteIndentedLine("");
 
             // Write object shells
@@ -74,14 +103,28 @@ namespace VBXProj.Parsers
             {
                 AssetClassGuid guid = ((dynamic)assetObject).GetInstanceGuid();
                 
-                WriteIndentedLine($"\"{assetObject.GetType().Name}\" \"{guid.ExportedGuid}\" \"{guid.InternalId}\" \"{asset.RootObjects.Contains(assetObject)}\"");
+                WriteIndentedLine($"\"{assetObject.GetType().Name}\" \"{guid.ExportedGuid}\" \"{guid.InternalId}\"");
             }
             PreviousLevel();
             WriteIndentedLine("}");
+            
+            // Write added bundles
+            WriteIndentedLine("Bundles");
+            WriteIndentedLine("{");
+            NextLevel();
 
+            foreach (int bid in assetEntry.AddedBundles)
+            {
+                BundleEntry bentry = App.AssetManager.GetBundleEntry(bid);
+                WriteIndentedLine(bentry.Name);
+            }
+            
             PreviousLevel();
             WriteIndentedLine("}");
             WriteIndentedLine("");
+
+            PreviousLevel();
+            WriteIndentedLine("}");
 
             //Write object data
             foreach (object assetObject in asset.Objects)
@@ -103,6 +146,10 @@ namespace VBXProj.Parsers
 
             foreach (PropertyInfo property in obj.GetType().GetProperties())
             {
+                // Don't write transient data
+                if (property.GetCustomAttribute<IsTransientAttribute>() != null)
+                    continue;
+                
                 WriteProperty(property.GetValue(obj), property.Name);
             }
             
@@ -112,7 +159,7 @@ namespace VBXProj.Parsers
         
         private void WriteProperty(object prop, string name = null)
         {
-            if (name == "__InstanceGuid" || name == "__Id")
+            if (name == "__InstanceGuid")
                 return;
             
             switch (prop.GetType().Name) // All of these must be formatted as: "{type}" "{name}" "{property}" so that the reader can parse properly
@@ -134,22 +181,21 @@ namespace VBXProj.Parsers
                 {
                     WriteIndentedLine($"\"{prop.GetType().Name}\" \"{name}\" \"{((dynamic)prop).x},{((dynamic)prop).y}\"");
                 } break;
-                case "LinearTransform":
+                /*case "LinearTransform":
                 {
                     WriteIndentedLine($"\"{prop.GetType().Name}\" \"{name}\"");
                     WriteIndentedLine("{");
                     NextLevel();
 
-                    LinearTransformConverter converter = new LinearTransformConverter();
-                    EditorLinearTransform transform = (EditorLinearTransform)converter.Convert(prop, prop.GetType(), null, CultureInfo.CurrentCulture);
-                    
-                    WriteIndentedLine($"\"Vec3\" \"Translate\" \"{transform.Translation.x},{transform.Translation.y},{transform.Translation.z}\"");
-                    WriteIndentedLine($"\"Vec3\" \"Rotation\" \"{transform.Rotation.x},{transform.Rotation.y},{transform.Rotation.z}\"");
-                    WriteIndentedLine($"\"Vec3\" \"Scale\" \"{transform.Scale.x},{transform.Scale.y},{transform.Scale.z}\"");
+                    dynamic transform = prop;
+                    WriteProperty(transform.right, "right");
+                    WriteProperty(transform.up, "up");
+                    WriteProperty(transform.forward, "forward");
+                    WriteProperty(transform.trans, "trans");
 
                     PreviousLevel();
                     WriteIndentedLine("}");
-                } break;
+                } break;*/
                 case "EventConnection":
                 {
                     WriteIndentedLine($"\"{prop.GetType().Name}\" \"{name}\"");
@@ -220,21 +266,26 @@ namespace VBXProj.Parsers
                 default:
                 {
                     //Write down as an object
-                    if (prop.ToString().Contains("FrostySdk.Ebx"))
+                    Type propType = prop.GetType();
+                    if (propType.IsEnum || propType.IsValueType || propType.IsPrimitive)
+                    {
+                        WriteIndentedLine($"\"{prop.GetType().Name}\" \"{name}\" \"{prop}\"");
+                    }
+                    else
                     {
                         WriteIndentedLine($"\"{prop.GetType().Name}\" \"{name}\" ");
                         WriteIndentedLine("{");
                         NextLevel();
                         foreach (PropertyInfo property in prop.GetType().GetProperties())
                         {
+                            // Don't write transient data
+                            if (property.GetCustomAttribute<IsTransientAttribute>() != null)
+                                continue;
+                            
                             WriteProperty(property.GetValue(prop), property.Name);
                         }
                         PreviousLevel();
                         WriteIndentedLine("}");
-                    }
-                    else
-                    {
-                        WriteIndentedLine($"\"{prop.GetType().Name}\" \"{name}\" \"{prop}\"");
                     }
                 } break;
             }

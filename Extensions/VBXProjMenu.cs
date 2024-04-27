@@ -36,6 +36,8 @@ namespace VBXProj.Extensions
             App.WhitelistedBundles.Clear();
             
             VBXProject.Load(ofd.FileName);
+            App.EditorWindow.DataExplorer.ShowOnlyModified = false;
+            App.EditorWindow.DataExplorer.ShowOnlyModified = true;
             App.EditorWindow.DataExplorer.RefreshAll();
         });
     }
