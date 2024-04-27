@@ -280,10 +280,15 @@ namespace VBXProj.Parsers
                 line = ReadCleanLine();
             }
 
+            if (fileData.ProjectDir == null)
+            {
+                int idx = _file.FullName.IndexOf(@"Vbx\");
+                fileData.ProjectDir = _file.FullName.Remove(idx + 4);
+            }
             // Determine the asset path based on the physical path
             if (fileData.AssetPath == null)
             {
-                fileData.AssetPath = _file.FullName.Replace($"{fileData.ProjectDir}\\Vbx\\", "").Replace("\\", "/").Replace(".vbx", "");
+                fileData.AssetPath = _file.FullName.Replace($"{fileData.ProjectDir}", "").Replace("\\", "/").Replace(".vbx", "");
             }
             fileData.PhysicalPath = _file.FullName;
             return fileData;

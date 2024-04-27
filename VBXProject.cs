@@ -174,7 +174,7 @@ namespace VBXProj
             foreach (EbxAssetEntry assetEntry in App.AssetManager.EnumerateEbx("", true))
             {
                 string path = $@"{directory}\Vbx\{assetEntry.Name.Replace("/", "\\")}.vbx";
-                writer.WriteAsset(assetEntry, RemoveIllegalCharacters(path), directory);
+                writer.WriteAsset(assetEntry, RemoveIllegalCharacters(path));
                 if (assetEntry.HasModifiedData)
                 {
                     assetEntry.ModifiedEntry.IsDirty = false;

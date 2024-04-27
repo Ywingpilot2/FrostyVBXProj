@@ -36,7 +36,7 @@ namespace VBXProj.Parsers
 
         #region Writing assets
 
-        public void WriteAsset(EbxAssetEntry assetEntry, string file, string projectDir)
+        public void WriteAsset(EbxAssetEntry assetEntry, string file)
         {
             _file = new FileInfo(file);
             if (_file.Directory != null && !_file.Directory.Exists) 
@@ -45,10 +45,10 @@ namespace VBXProj.Parsers
             }
             
             _writer = new StreamWriter(file);
-            WriteAsset(assetEntry, projectDir);
+            WriteAsset(assetEntry);
         }
         
-        public void WriteAsset(EbxAssetEntry assetEntry, string projectDir)
+        public void WriteAsset(EbxAssetEntry assetEntry)
         {
             if (_writer == null)
             {
@@ -67,9 +67,9 @@ namespace VBXProj.Parsers
             // This asset is a handler, meaning we need to store it in binary
             if (assetEntry.ModifiedEntry.DataObject is ModifiedResource modifiedResource)
             {
-                string path = $@"{projectDir}\Vbx\{assetEntry.Name.Replace('/', '\\')}.md";
+                string path = $@"{_file.Directory.FullName}\{assetEntry.Filename}.md";
+                
                 WriteIndentedLine("modified_resource");
-                WriteIndentedLine($"\"projdir\" \"{projectDir}\"");
                 WriteIndentedLine($"\"type\" \"{assetEntry.Type}\"");
                 WriteIndentedLine($"\"fid\" \"{asset.FileGuid}\"");
                 PreviousLevel();
@@ -85,7 +85,6 @@ namespace VBXProj.Parsers
             }
 
             // Write file data
-            WriteIndentedLine($"\"projdir\" \"{projectDir}\"");
             WriteIndentedLine($"\"type\" \"{assetEntry.Type}\"");
             WriteIndentedLine($"\"fid\" \"{asset.FileGuid}\"");
             // I hope I get to meet gman some day so I can punch him in the fucking face for this
