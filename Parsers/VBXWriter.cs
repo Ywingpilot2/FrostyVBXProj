@@ -18,12 +18,13 @@ namespace VBXProj.Parsers
     /// </summary>
     public class VBXWriter : BaseDataWriter
     {
+        private  FileInfo _file;
         public VBXWriter(string file)
         {
-            FileInfo fi = new FileInfo(file);
-            if (fi.Directory != null && !fi.Directory.Exists) 
+            _file = new FileInfo(file);
+            if (_file.Directory != null && !_file.Directory.Exists) 
             { 
-                Directory.CreateDirectory(fi.DirectoryName); 
+                Directory.CreateDirectory(_file.DirectoryName); 
             }
             
             _writer = new StreamWriter(file);
@@ -37,10 +38,10 @@ namespace VBXProj.Parsers
 
         public void WriteAsset(EbxAssetEntry assetEntry, string file, string projectDir)
         {
-            FileInfo fi = new FileInfo(file);
-            if (fi.Directory != null && !fi.Directory.Exists) 
+            _file = new FileInfo(file);
+            if (_file.Directory != null && !_file.Directory.Exists) 
             { 
-                Directory.CreateDirectory(fi.DirectoryName); 
+                Directory.CreateDirectory(_file.DirectoryName); 
             }
             
             _writer = new StreamWriter(file);
@@ -92,6 +93,12 @@ namespace VBXProj.Parsers
             if (assetEntry.ModifiedEntry.IsTransientModified)
             {
                 WriteIndentedLine("transient"); 
+            }
+
+            // Some assets have to be in lowercase
+            if (assetEntry.Name.ToLower() == assetEntry.Name)
+            {
+                WriteIndentedLine("forcelower");
             }
             WriteIndentedLine("");
 

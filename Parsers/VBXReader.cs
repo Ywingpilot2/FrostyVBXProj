@@ -199,6 +199,10 @@ namespace VBXProj.Parsers
                 var props = line.Split(new[] { "\" \"" }, StringSplitOptions.RemoveEmptyEntries);
                 switch (props[0].Trim('"'))
                 {
+                    case "origpath":
+                    {
+                        fileData.AssetPath = props[1].Trim('"');
+                    } break;
                     case "transient":
                     {
                         fileData.TransientEdit = true;
@@ -260,7 +264,11 @@ namespace VBXProj.Parsers
                 line = ReadCleanLine();
             }
 
-            fileData.AssetPath = _file.FullName.Replace($"{fileData.ProjectDir}\\Vbx\\", "").Replace("\\", "/").Replace(".vbx", "");
+            // Determine the asset path based on the physical path
+            if (fileData.AssetPath == null)
+            {
+                fileData.AssetPath = _file.FullName.Replace($"{fileData.ProjectDir}\\Vbx\\", "").Replace("\\", "/").Replace(".vbx", "");
+            }
             fileData.PhysicalPath = _file.FullName;
             return fileData;
         }
