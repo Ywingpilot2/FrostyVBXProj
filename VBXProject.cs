@@ -364,6 +364,7 @@ namespace VBXProj
                 ReadChunk(fi.Directory.FullName);
                 
                 task.Update("Cleanup...");
+                // TODO: proper linked assets
                 foreach (BundleEntry bundle in App.AssetManager.EnumerateBundles(modifiedOnly:true))
                 {
                     if (bundle.Type == BundleType.SharedBundle)
@@ -390,6 +391,29 @@ namespace VBXProj
             foreach (string file in Directory.EnumerateFiles(projectDir, "*.vbx", SearchOption.AllDirectories))
             {
                 dataReader.ReadAsset(file);
+            }
+
+            // TODO: We should load all entries as "husks" before ever reading raw vbx data
+            foreach (EbxAssetEntry entry in App.AssetManager.EnumerateEbx(modifiedOnly:true))
+            {
+                // Don't bother
+                if (entry.ModifiedEntry.DependentAssets.Count == 0)
+                    continue;
+                
+                List<Guid> invalids = new List<Guid>();
+                foreach (Guid dependency in entry.EnumerateDependencies())
+                {
+                    if (App.AssetManager.GetEbxEntry(dependency) != null)
+                        continue;
+                    
+                    App.Logger.LogWarning("{0} contained an invalid reference!", entry.Name);
+                    invalids.Add(dependency);
+                }
+
+                foreach (Guid invalid in invalids)
+                {
+                    entry.ModifiedEntry.DependentAssets.Remove(invalid);
+                }
             }
             
             dataReader.Dispose();

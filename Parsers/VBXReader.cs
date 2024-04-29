@@ -272,14 +272,7 @@ namespace VBXProj.Parsers
 
                         while (line != "}")
                         {
-                            Guid guid = Guid.Parse(line);
-                            if (App.AssetManager.GetEbxEntry(guid) == null)
-                            {
-                                line = ReadCleanLine(); // TODO: asset may not be loaded yet by the time this check happens! 
-                                continue;
-                            }
-                            
-                            fileData.Dependencies.Add(guid);
+                            fileData.Dependencies.Add(Guid.Parse(line));
                             line = ReadCleanLine();
                         }
                     } break;
