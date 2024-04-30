@@ -153,6 +153,8 @@ namespace VBXProj
                 WriteChunk(fi.Directory.FullName);
 
                 #endregion
+                
+                App.Logger.Log("Saved");
             });
         }
 
@@ -345,6 +347,9 @@ namespace VBXProj
                 App.Logger.LogError("Specified path does not exist");
                 return;
             }
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             
             FrostyTaskWindow.Show("Loading...", "", task =>
             {
@@ -373,6 +378,9 @@ namespace VBXProj
                     bundle.Blueprint = App.AssetManager.GetEbxEntry(bundle.Name.Remove(0, 6));
                 }
             });
+            
+            stopwatch.Stop();
+            App.Logger.Log("Loaded project in {0}", stopwatch.Elapsed.ToString());
         }
 
         private static void ReadBundle(string projectDir)
