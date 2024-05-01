@@ -16,10 +16,10 @@ namespace VBXProj.Parsers
     /// <summary>
     /// Writer for writing EBX into a visualized text format
     /// </summary>
-    public class VBXWriter : BaseDataWriter
+    public class VbxDataWriter : BaseDataWriter
     {
         private  FileInfo _file;
-        public VBXWriter(string file)
+        public VbxDataWriter(string file)
         {
             _file = new FileInfo(file);
             if (_file.Directory != null && !_file.Directory.Exists) 
@@ -30,7 +30,7 @@ namespace VBXProj.Parsers
             _writer = new StreamWriter(file);
         }
 
-        public VBXWriter()
+        public VbxDataWriter()
         {
         }
 
