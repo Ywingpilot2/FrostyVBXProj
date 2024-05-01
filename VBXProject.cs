@@ -7,6 +7,7 @@ using System.Windows;
 using Frosty.Controls;
 using Frosty.Core;
 using Frosty.Core.Windows;
+using FrostyEditor;
 using FrostySdk;
 using FrostySdk.IO;
 using FrostySdk.Managers;
@@ -18,6 +19,20 @@ namespace VBXProj
 {
     public static class VBXProject
     {
+        public static bool IsLoaded
+        {
+            get
+            {
+                MainWindow frosty = null;
+
+                Application.Current.Dispatcher.Invoke(delegate
+                {
+                    frosty = Application.Current.MainWindow as MainWindow;
+                });
+                return frosty?.Project.DisplayName == "New Project.fbproject" && CurrentProject.DisplayName != "New Project.vproj";
+            }
+        }
+        
         #region Project Data
         
         public static int Version => 1005;
