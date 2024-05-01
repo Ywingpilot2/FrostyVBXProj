@@ -21,7 +21,7 @@ namespace VBXProj
         #region Project Data
         
         public static int Version => 1001;
-        public static int ItemsCount { get; set; }
+        public static VProject CurrentProject { get; set; }
         
         public static void WriteProject(string projectPath)
         {
@@ -43,7 +43,10 @@ namespace VBXProj
             writer.WriteLine("");
             
             writer.WriteLine($"Version {Version}");
+            VProject currentProject = CurrentProject;
+            currentProject.Version = Version;
             writer.WriteLine($"ItemsCount {App.AssetManager.GetModifiedCount()}");
+            currentProject.ItemsCount = (int)App.AssetManager.GetModifiedCount();
 
             writer.Close();
         }
@@ -56,6 +59,11 @@ namespace VBXProj
                 App.Logger.LogError("Not a valid project");
                 return false;
             }
+
+            VProject current = new VProject
+            {
+                Location = projectPath
+            };
             
             StreamReader reader = new StreamReader(projectPath);
 
@@ -81,15 +89,18 @@ namespace VBXProj
                                 "VBX Project Manager", MessageBoxButton.YesNo);
                             if (result == MessageBoxResult.No) return false;
                         }
+
+                        current.Version = version;
                     } break;
                     case "ItemsCount":
                     {
-                        ItemsCount = int.Parse(line.Split(' ')[1]);
+                        current.ItemsCount = int.Parse(line.Split(' ')[1]);
                     } break;
                 }
                 line = reader.ReadLine();
             }
 
+            CurrentProject = current;
             return true;
         }
 
@@ -665,5 +676,23 @@ namespace VBXProj
         }
 
         #endregion
+
+        static VBXProject()
+        {
+            CurrentProject = new VProject
+            {
+                Location = "New Project.vproj",
+                ItemsCount = 0,
+                Version = Version
+            };
+        }
+    }
+
+    public struct VProject
+    {
+        public string Location { get; set; }
+        public string DisplayName => Location.Split('\\').Last();
+        public int ItemsCount { get; set; }
+        public int Version { get; set; }
     }
 }

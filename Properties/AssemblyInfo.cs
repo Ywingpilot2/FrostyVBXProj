@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
+using BlueprintEditorPlugin.Attributes;
 using VBXProj.Extensions;
 
 // Setting ComVisible to false makes the types in this assembly not visible
@@ -27,6 +28,7 @@ using VBXProj.Extensions;
 [assembly: PluginVersion("1.0.0.0")]
 [assembly: RegisterMenuExtension(typeof(VBXProjLoad))]
 [assembly: RegisterMenuExtension(typeof(VBXProjSave))]
+[assembly: RegisterEntityLayoutExtension(typeof(VBXLayoutExtension))]
 #if DEVELOPER___DEBUG
 [assembly: RegisterMenuExtension(typeof(XmlDiffExtension))]
 #endif

@@ -38,6 +38,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="BlueprintEditorPlugin">
+      <HintPath>..\..\1063\FrostyToolsuite\FrostyEditor\bin\Release\Final\Plugins\BlueprintEditorPlugin.dll</HintPath>
+    </Reference>
     <Reference Include="FrostyControls">
       <HintPath>..\..\1063\FrostyToolsuite\FrostyEditor\bin\Release\Final\FrostyControls.dll</HintPath>
     </Reference>
