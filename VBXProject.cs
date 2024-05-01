@@ -777,6 +777,7 @@ namespace VBXProj
                 App.Logger.LogError("Failed to read linked assets for {0}!", source.Name);
             }
 
+            source.LinkAsset(entry);
             int count = reader.ReadInt();
             for (int i = 0; i < count; i++)
             {
