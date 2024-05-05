@@ -31,13 +31,7 @@ namespace VBXProj.Extensions
 
         public override bool IsValid(EbxAssetEntry assetEntry)
         {
-            MainWindow frosty = null;
-
-            Application.Current.Dispatcher.Invoke(delegate
-            {
-                frosty = Application.Current.MainWindow as MainWindow;
-            });
-            return frosty?.Project.DisplayName == "New Project.fbproject" && VBXProject.CurrentProject.DisplayName != "New Project.vproj";
+            return VBXProject.IsLoaded;
         }
         
         public override bool SaveLayout(string path)

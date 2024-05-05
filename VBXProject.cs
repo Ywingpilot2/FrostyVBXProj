@@ -455,8 +455,10 @@ namespace VBXProj
             });
             
             stopwatch.Stop();
-            App.Logger.Log("Loaded project in {0}", stopwatch.Elapsed.ToString());
+            App.Logger.Log("Loaded project {1} in {0}", stopwatch.Elapsed.ToString(), CurrentProject.DisplayName);
         }
+
+        #region Reading
 
         private static void ReadBundle(string projectDir)
         {
@@ -799,6 +801,8 @@ namespace VBXProj
                 LoadLinkedAssets(reader, entry, projectDir);
             }
         }
+
+        #endregion
 
         #endregion
 
