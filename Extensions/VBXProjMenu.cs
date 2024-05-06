@@ -1,5 +1,7 @@
 ﻿using Frosty.Core;
 using Frosty.Core.Controls;
+using FrostySdk.Managers;
+using VBXProj.Parsers;
 
 namespace VBXProj.Extensions
 {
@@ -18,6 +20,21 @@ namespace VBXProj.Extensions
             
             VBXProject.Save(saveFileDialog.FileName);
             App.EditorWindow.DataExplorer.RefreshAll();
+        });
+    }
+    
+    public class VBXExport : DataExplorerContextMenuExtension
+    {
+        public override string ContextItemName => "Export as VBX";
+
+        public override RelayCommand ContextItemClicked => new RelayCommand(o =>
+        {
+            FrostySaveFileDialog saveFileDialog = new FrostySaveFileDialog("Export Asset", "VBX Asset (*.vbx)|*.vbx", "");
+            if (!saveFileDialog.ShowDialog())
+                return;
+
+            VbxDataWriter writer = new VbxDataWriter(saveFileDialog.FileName);
+            writer.WriteAsset(App.SelectedAsset, true);
         });
     }
 

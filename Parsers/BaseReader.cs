@@ -29,8 +29,8 @@ namespace VBXProj.Parsers
         
         public virtual void Dispose()
         {
-            _reader.Close();
-            _reader.Dispose();
+            _reader?.Close();
+            _reader?.Dispose();
         }
     }
 }

@@ -36,7 +36,7 @@ namespace VBXProj.Parsers
 
         #region Writing assets
 
-        public void WriteAsset(EbxAssetEntry assetEntry, string file)
+        public void WriteAsset(EbxAssetEntry assetEntry, string file, bool writeOrigPath = false)
         {
             _file = new FileInfo(file);
             if (_file.Directory != null && !_file.Directory.Exists) 
@@ -45,10 +45,10 @@ namespace VBXProj.Parsers
             }
             
             _writer = new StreamWriter(file);
-            WriteAsset(assetEntry);
+            WriteAsset(assetEntry, writeOrigPath);
         }
         
-        public void WriteAsset(EbxAssetEntry assetEntry)
+        public void WriteAsset(EbxAssetEntry assetEntry, bool writeOrigPath = false)
         {
             if (_writer == null)
             {
@@ -63,6 +63,11 @@ namespace VBXProj.Parsers
             WriteIndentedLine("FILEDATA");
             WriteIndentedLine("{");
             NextLevel();
+
+            if (writeOrigPath)
+            {
+                WriteIndentedLine($"\"origpath\" \"{assetEntry.Path}\"");
+            }
 
             // This asset is a handler, meaning we need to store it in binary
             if (assetEntry.ModifiedEntry.DataObject is ModifiedResource modifiedResource)

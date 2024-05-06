@@ -33,7 +33,7 @@ namespace VBXProj.Extensions
         {
             return VBXProject.IsLoaded;
         }
-        
+
         public override bool SaveLayout(string path)
         {
             FileInfo fileInfo = new FileInfo($@"{CurrentLayoutPath}\{path.Replace("/", "\\")}");
@@ -141,6 +141,10 @@ namespace VBXProj.Extensions
 
             return true;
         }
+
+        public override bool LayoutExists(string path) => File.Exists(CurrentLayoutPath + path.Replace("/", "\\"));
+
+        public override bool LoadLayoutRelative(string path) => LoadLayout(CurrentLayoutPath + "\\" + path.Replace("/", "\\"));
 
         public override bool LoadLayout(string path)
         {

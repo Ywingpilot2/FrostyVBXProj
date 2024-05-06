@@ -132,25 +132,33 @@ namespace VBXProj
             {
                 Directory.CreateDirectory(fi.DirectoryName);
             }
+
+            bool needsRefresh = fi.Exists;
             
             FrostyTaskWindow.Show("Saving...", "", task =>
             {
                 task.Update("Cleaning directory...");
-                foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.vbx", SearchOption.AllDirectories))
+                
+                // Don't delete any files if this project does not exist yet
+                // Otherwise you'll make the incompetant mistake I did...
+                if (needsRefresh)
                 {
-                    File.Delete(file);
-                }
-                foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.bdl", SearchOption.AllDirectories))
-                {
-                    File.Delete(file);
-                }
-                foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.res", SearchOption.AllDirectories))
-                {
-                    File.Delete(file);
-                }
-                foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.chunk", SearchOption.AllDirectories))
-                {
-                    File.Delete(file);
+                    foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.vbx", SearchOption.AllDirectories))
+                    {
+                        File.Delete(file);
+                    }
+                    foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.bdl", SearchOption.AllDirectories))
+                    {
+                        File.Delete(file);
+                    }
+                    foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.res", SearchOption.AllDirectories))
+                    {
+                        File.Delete(file);
+                    }
+                    foreach (string file in Directory.EnumerateFiles(fi.Directory.FullName, "*.chunk", SearchOption.AllDirectories))
+                    {
+                        File.Delete(file);
+                    }
                 }
                 
                 task.Update("Writing Bundles...");

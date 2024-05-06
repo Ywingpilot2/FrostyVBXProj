@@ -29,6 +29,7 @@ using VBXProj.Extensions;
 [assembly: RegisterMenuExtension(typeof(VBXProjLoad))]
 [assembly: RegisterMenuExtension(typeof(VBXProjSave))]
 [assembly: RegisterEntityLayoutExtension(typeof(VBXLayoutExtension))]
+[assembly: RegisterDataExplorerContextMenu(typeof(VBXExport))]
 #if DEVELOPER___DEBUG
 [assembly: RegisterMenuExtension(typeof(XmlDiffExtension))]
 #endif
