@@ -484,6 +484,7 @@ namespace VBXProj
             foreach (string file in Directory.EnumerateFiles(projectDir, "*.vbx", SearchOption.AllDirectories))
             {
                 EbxAssetEntry asset = dataReader.ReadAsset(file);
+                dataReader.Dispose();
                 if (File.Exists(file.Replace(".vbx", ".bin")))
                 {
                     NativeReader reader = new NativeReader(new FileStream(file.Replace(".vbx", ".bin"), FileMode.Open));

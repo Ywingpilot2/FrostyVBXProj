@@ -50,8 +50,7 @@ namespace VBXProj.Parsers
 
             _file = fi;
             _reader = new StreamReader(filePath);
-            ReadAsset(overwrite);
-            return AssetEntry;
+            return ReadAsset(overwrite);
         }
         
         public EbxAssetEntry ReadAsset(bool overwrite = true)
@@ -149,8 +148,6 @@ namespace VBXProj.Parsers
             Ebx.OnLoadComplete();
             AssetEntry.OnModified();
             AssetEntry.IsDirty = false;
-
-            Dispose();
 
             return AssetEntry;
         }
