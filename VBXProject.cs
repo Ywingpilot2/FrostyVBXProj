@@ -228,6 +228,7 @@ namespace VBXProj
                     {
                         SaveLinkedAssets(linkedAsset, writer);
                     }
+                    writer.Dispose();
                 }
 
                 assetEntry.IsDirty = false;
@@ -493,6 +494,7 @@ namespace VBXProj
                     {
                         LoadLinkedAssets(reader, asset, projectDir);
                     }
+                    reader.Dispose();
                 }
             }
 
