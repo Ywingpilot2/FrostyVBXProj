@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using Frosty.Controls;
 using Frosty.Core;
@@ -12,6 +13,7 @@ using FrostySdk;
 using FrostySdk.IO;
 using FrostySdk.Managers;
 using FrostySdk.Resources;
+using VBXProj.Extensions;
 using VBXProj.Parsers;
 using App = Frosty.Core.App;
 
@@ -32,7 +34,10 @@ namespace VBXProj
                 return frosty?.Project.DisplayName == "New Project.fbproject" && CurrentProject.DisplayName != "New Project.vproj";
             }
         }
-        
+
+        private static List<LoadActionExtension> _loadActions = new List<LoadActionExtension>();
+        private static List<SaveActionExtension> _saveActions = new List<SaveActionExtension>();
+
         #region Project Data
         
         public static int Version => 1005;
@@ -189,6 +194,13 @@ namespace VBXProj
                 WrittenRes.Clear();
 
                 #endregion
+
+                foreach (var saveAction in _saveActions)
+                {
+                    saveAction.CurrentLogger = task.TaskLogger;
+                    saveAction.Action.Invoke(CurrentProject);
+                    saveAction.CurrentLogger = null;
+                }
                 
                 App.Logger.Log("Saved");
             });
@@ -460,6 +472,13 @@ namespace VBXProj
                         continue;
                     
                     bundle.Blueprint = App.AssetManager.GetEbxEntry(bundle.Name.Remove(0, 6));
+                }
+                
+                foreach (var loadAction in _loadActions)
+                {
+                    loadAction.CurrentLogger = task.TaskLogger;
+                    loadAction.Action.Invoke(CurrentProject);
+                    loadAction.CurrentLogger = null;
                 }
             });
             
@@ -848,7 +867,7 @@ namespace VBXProj
         }
 
         #endregion
-
+        
         static VBXProject()
         {
             CurrentProject = new VProject
@@ -857,6 +876,27 @@ namespace VBXProj
                 ItemsCount = 0,
                 Version = Version
             };
+
+            foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
+            {
+                try
+                {
+                    if (type.IsSubclassOf(typeof(LoadActionExtension)))
+                    {
+                        LoadActionExtension extension = (LoadActionExtension)Activator.CreateInstance(type);
+                        _loadActions.Add(extension);
+                    }
+                    else if (type.IsSubclassOf(typeof(SaveActionExtension)))
+                    {
+                        SaveActionExtension extension = (SaveActionExtension)Activator.CreateInstance(type);
+                        _saveActions.Add(extension);
+                    }
+                }
+                catch (Exception e)
+                {
+                    App.Logger.LogError("Unable to load type {0} because of exception {1}", type.Name, e.Message);
+                }
+            }
         }
     }
 
